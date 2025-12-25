@@ -65,6 +65,7 @@ textarea {
   background: var(--surface-alt);
   color: inherit;
   padding: 0.5rem 0.75rem;
+  margin-top: 0.3em;
 }
 
 .shell {
@@ -288,6 +289,7 @@ form.card {
   font-size: 0.8rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-align: start;
 }
 
 .score-table tbody tr:last-child td {

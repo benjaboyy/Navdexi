@@ -3,10 +3,10 @@
 Simple Vue 3 + Vite dashboard for arcade high scores, admin moderation, and a mocked ingestion API.
 
 ## Features
-- High-score overview per game sourced from `src/data/seed.json`.
+- High-score overview powered by Firebase Realtime Database.
 - Password-gated admin panel to delete submissions and manage games/locations.
 - Manual submission form mirroring the API contract.
-- Vite dev-server middleware that mocks `POST /api/scores`.
+- Firebase Cloud Function handling `POST /api/scores`.
 
 ## Quick Start
 ```
@@ -48,7 +48,11 @@ Visit `http://localhost:5173`. Pages:
 ```
 Misconfigured payloads return `400` with `{ success: false, error }`.
 
+Include a `password` field matching the shared secret set via `scores.password` runtime config or `SCORES_API_PASSWORD` env var; invalid passwords return `401`.
+
+Production hosting rewrites `/api/scores` to the deployed Firebase HTTPS function defined in `functions/index.js`.
+
 ## Firebase
-`VITE_FIREBASE_URL` is exposed to the client via `__FIREBASE_URL__` define for future REST calls. Swap the mock store logic with Firebase SDK / REST integration when ready.
+`VITE_FIREBASE_URL` is exposed to the client via `__FIREBASE_URL__` define for REST calls to Firebase.
 
 More detail in `docs/setup.md`.

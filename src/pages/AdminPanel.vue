@@ -23,11 +23,12 @@
       <section class="card card-wide">
         <header>
           <h2>Submissions</h2>
-          <small>Delete unwanted entries.</small>
+          <small>Edit entries.</small>
         </header>
         <ScoreTable
           title="Recent submissions"
           :items="submissions"
+          showMode
         >
           <template #rowActions="{ entry }">
             <button class="danger" @click="deleteSubmission(entry.id)">Delete</button>
@@ -104,8 +105,10 @@
         </form>
         <ul class="item-list">
           <li v-for="loc in state.locations" :key="loc.id">
-            <span>{{ loc.name }} – {{ loc.id }}</span>
-            <button class="danger" @click="removeLocation(loc.id)" :disabled="state.loading">Remove</button>
+            <div class="game-header">
+              <span>{{ loc.name }} – {{ loc.id }}</span>
+              <button class="danger" @click="removeLocation(loc.id)" :disabled="state.loading">Remove</button>
+            </div>
           </li>
         </ul>
       </section>

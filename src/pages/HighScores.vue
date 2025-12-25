@@ -11,7 +11,7 @@
         </header>
 
         <ScoreTable
-            v-if="game.scores?.length == 0"
+          v-if="!game.modes?.length"
           :title="game.modes?.length ? 'Overall' : 'Top scores'"
           :items="decorate(game.scores)"
         />
