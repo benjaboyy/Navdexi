@@ -1,7 +1,10 @@
 <template>
-  <div class="page">
+  <div class="page submit-form">
     <h1>Submit Score</h1>
-    <p class="subtitle">API endpoint mirrors this form. Use this to test submissions.</p>
+    <p class="subtitle">
+      API endpoint mirrors this form. Use this to test submissions.
+      <span v-if="state.loading">(syncing…)</span>
+    </p>
 
     <form class="card" @submit.prevent="handleSubmit">
       <label>
@@ -11,15 +14,18 @@
 
       <label>
         Game
-        <select v-model="form.gameId" required>
+        <select v-model="form.gameId" required @change="handleGameChange">
           <option disabled value="">Select game</option>
           <option v-for="game in state.games" :key="game.id" :value="game.id">{{ game.name }}</option>
         </select>
       </label>
 
-      <label>
+      <label v-if="hasModes">
         Mode
-        <input v-model="form.mode" placeholder="e.g. survival" />
+        <select v-model="form.mode" :required="hasModes">
+          <option value="">Select mode</option>
+          <option v-for="mode in availableModes" :key="mode">{{ mode }}</option>
+        </select>
       </label>
 
       <label>
@@ -35,18 +41,26 @@
         <input v-model.number="form.score" type="number" min="0" required />
       </label>
 
-      <button type="submit">Submit</button>
-      <p v-if="submitted" class="note">Score submitted locally.</p>
+      <button type="submit" :disabled="state.loading">Submit</button>
+      <p v-if="submitted" class="note">Score submitted.</p>
+      <p v-if="error" class="error">{{ error }}</p>
     </form>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, computed } from 'vue';
 import { useArcadeStore } from '../stores/arcadeStore';
 
 const { addSubmission, state } = useArcadeStore();
+const availableModes = computed(() => {
+  const game = state.games.find((item) => item.id === form.gameId);
+  return game?.modes || [];
+});
+const hasModes = computed(() => availableModes.value.length > 0);
+
 const submitted = ref(false);
+const error = ref('');
 
 const form = reactive({
   gamertag: '',
@@ -64,53 +78,21 @@ const resetForm = () => {
   form.score = 0;
 };
 
-const handleSubmit = () => {
-  addSubmission({ ...form });
-  submitted.value = true;
-  setTimeout(() => (submitted.value = false), 2000);
-  resetForm();
+const handleGameChange = () => {
+  if (!availableModes.value.includes(form.mode)) {
+    form.mode = '';
+  }
+};
+
+const handleSubmit = async () => {
+  try {
+    error.value = '';
+    await addSubmission({ ...form });
+    submitted.value = true;
+    setTimeout(() => (submitted.value = false), 2000);
+    resetForm();
+  } catch (err) {
+    error.value = err.message || 'Failed to submit score';
+  }
 };
 </script>
-
-<style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.5rem;
-  border: 1px solid #e4e4e7;
-  border-radius: 12px;
-  background: #fff;
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-weight: 600;
-}
-
-input,
-select {
-  border-radius: 8px;
-  border: 1px solid #d4d4d8;
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem;
-}
-
-button {
-  margin-top: 0.5rem;
-}
-
-.note {
-  color: #16a34a;
-  margin: 0;
-}
-</style>
-

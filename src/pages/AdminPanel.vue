@@ -4,8 +4,8 @@
     <p class="subtitle">
       Use the password to access moderation and catalog management.
       <span v-if="state.loading">(syncing…)</span>
-      <span v-else-if="state.usingFirebase">(Firebase live)</span>
-      <span v-else>(local mock)</span>
+      <span v-else-if="state.error">({{ state.error }})</span>
+      <span v-else>(connected)</span>
     </p>
 
     <section v-if="!authed" class="card">
@@ -19,8 +19,8 @@
       </form>
     </section>
 
-    <div v-else class="grid">
-      <section class="card">
+    <div v-else class="grid admin-grid">
+      <section class="card card-wide">
         <header>
           <h2>Submissions</h2>
           <small>Delete unwanted entries.</small>
@@ -28,7 +28,6 @@
         <ScoreTable
           title="Recent submissions"
           :items="submissions"
-          show-mode
         >
           <template #rowActions="{ entry }">
             <button class="danger" @click="deleteSubmission(entry.id)">Delete</button>
@@ -36,7 +35,7 @@
         </ScoreTable>
       </section>
 
-      <section class="card">
+      <section class="card card-half">
         <header>
           <h2>Games</h2>
         </header>
@@ -49,17 +48,46 @@
             ID (optional)
             <input v-model="newGame.id" placeholder="auto if empty" />
           </label>
+          <label>
+            Modes (comma separated)
+            <input v-model="newGame.modes" placeholder="score, time-attack" />
+          </label>
           <button type="submit">Add Game</button>
         </form>
         <ul class="item-list">
           <li v-for="game in state.games" :key="game.id">
-            <span>{{ game.name }} – {{ game.id }}</span>
-            <button class="danger" @click="removeGame(game.id)" :disabled="state.loading">Remove</button>
+            <div class="game-header">
+              <div class="item-meta">
+                <span>{{ game.name }} – {{ game.id }}</span>
+                <small>Modes: {{ game.modes?.join(', ') || 'none' }}</small>
+              </div>
+              <button class="danger" @click="removeGame(game.id)" :disabled="state.loading">Remove</button>
+            </div>
+
+            <div class="mode-pills" v-if="game.modes?.length">
+              <span
+                v-for="mode in game.modes"
+                :key="mode"
+                class="mode-pill"
+              >
+                {{ mode }}
+                <a type="button" class="pill-remove" @click="handleModeRemove(game.id, mode)">×</a>
+              </span>
+            </div>
+
+            <form class="mode-form" @submit.prevent="handleModeAdd(game.id)">
+              <input
+                v-model="modeDraft[game.id]"
+                placeholder="Add mode"
+                aria-label="Add mode"
+              />
+              <button type="submit">Add</button>
+            </form>
           </li>
         </ul>
       </section>
 
-      <section class="card">
+      <section class="card card-half">
         <header>
           <h2>Locations</h2>
         </header>
@@ -102,17 +130,23 @@ const verify = () => {
   if (ok) password.value = '';
 };
 
-const { submissionsWithMeta, deleteSubmission, state, addGame, removeGame, addLocation, removeLocation } = useArcadeStore();
+const { submissionsWithMeta, deleteSubmission, state, addGame, removeGame, addLocation, removeLocation, addModeToGame, removeModeFromGame } = useArcadeStore();
 
 const submissions = computed(() => submissionsWithMeta.value.slice(0, 20));
 
-const newGame = reactive({ name: '', id: '' });
+const newGame = reactive({ name: '', id: '', modes: '' });
 const newLocation = reactive({ id: '', name: '' });
+const modeDraft = reactive({});
 
 const handleGameAdd = () => {
-  addGame({ ...newGame });
+  const modes = newGame.modes
+    .split(',')
+    .map((mode) => mode.trim())
+    .filter(Boolean);
+  addGame({ ...newGame, modes });
   newGame.name = '';
   newGame.id = '';
+  newGame.modes = '';
 };
 
 const handleLocationAdd = () => {
@@ -120,87 +154,15 @@ const handleLocationAdd = () => {
   newLocation.id = '';
   newLocation.name = '';
 };
+
+const handleModeAdd = (gameId) => {
+  const value = modeDraft[gameId]?.trim();
+  if (!value) return;
+  addModeToGame(gameId, value);
+  modeDraft[gameId] = '';
+};
+
+const handleModeRemove = (gameId, mode) => {
+  removeModeFromGame(gameId, mode);
+};
 </script>
-
-<style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.subtitle {
-  color: #6b7280;
-}
-
-.card {
-  padding: 1.5rem;
-  border: 1px solid #e4e4e7;
-  border-radius: 12px;
-  background: #fff;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1rem;
-}
-
-header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
-}
-
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-weight: 600;
-}
-
-input {
-  border-radius: 8px;
-  border: 1px solid #d4d4d8;
-  padding: 0.5rem 0.75rem;
-}
-
-.item-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.item-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #f4f4f5;
-}
-
-.item-list li:last-child {
-  border-bottom: none;
-}
-
-.danger {
-  background: #fee2e2;
-  color: #b91c1c;
-  border-color: #fecaca;
-}
-
-.error {
-  color: #dc2626;
-}
-</style>

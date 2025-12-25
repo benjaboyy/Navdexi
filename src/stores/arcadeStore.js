@@ -1,12 +1,5 @@
-import { reactive, computed } from 'vue';
-import seed from '../data/seed.json';
+import { reactive, computed, ref } from 'vue';
 import { fetchCollection, putRecord, deleteRecord, firebaseConfigured } from '../services/firebaseClient';
-
-const seedSnapshot = {
-  games: [...seed.games],
-  locations: [...seed.locations],
-  submissions: [...seed.submissions],
-};
 
 const state = reactive({
   games: [],
@@ -14,21 +7,28 @@ const state = reactive({
   submissions: [],
   loading: false,
   error: null,
-  usingFirebase: firebaseConfigured,
+});
+
+const missingConfigMessage = 'Firebase URL missing. Set VITE_FIREBASE_URL in your .env file.';
+if (!firebaseConfigured) state.error = missingConfigMessage;
+
+const requireFirebase = () => {
+  if (!firebaseConfigured) throw new Error(missingConfigMessage);
+};
+
+const normalizeGame = (game) => ({
+  ...game,
+  modes: Array.isArray(game.modes) ? [...game.modes] : [],
 });
 
 const hydrateFromSource = (snapshot) => {
-  state.games = snapshot.games.map((game) => ({ ...game }));
-  state.locations = snapshot.locations.map((location) => ({ ...location }));
-  state.submissions = snapshot.submissions.map((submission) => ({ ...submission }));
+  state.games.splice(0, state.games.length, ...snapshot.games.map(normalizeGame));
+  state.locations.splice(0, state.locations.length, ...snapshot.locations.map((location) => ({ ...location })));
+  state.submissions.splice(0, state.submissions.length, ...snapshot.submissions.map((submission) => ({ ...submission })));
 };
 
 const bootstrap = async () => {
-  if (!firebaseConfigured) {
-    hydrateFromSource(seedSnapshot);
-    return;
-  }
-
+  if (!firebaseConfigured) return;
   state.loading = true;
   state.error = null;
   try {
@@ -40,7 +40,6 @@ const bootstrap = async () => {
     hydrateFromSource({ games, locations, submissions });
   } catch (err) {
     state.error = err.message;
-    hydrateFromSource(seedSnapshot);
   } finally {
     state.loading = false;
   }
@@ -48,7 +47,6 @@ const bootstrap = async () => {
 
 bootstrap();
 
-const clone = (items) => items.map((item) => ({ ...item }));
 const replaceArray = (target, next) => {
   target.splice(0, target.length, ...next);
 };
@@ -56,6 +54,19 @@ const replaceArray = (target, next) => {
 const newId = (prefix) => `${prefix}-${crypto.randomUUID?.() || Math.random().toString(36).slice(2, 9)}`;
 
 const findIndex = (list, matcher) => list.findIndex(matcher);
+
+const updateGameRecord = async (gameId, updater) => {
+  const idx = findIndex(state.games, (game) => game.id === gameId);
+  if (idx === -1) return;
+  const next = { ...state.games[idx] };
+  updater(next);
+  state.games.splice(idx, 1, next);
+  await putRecord('games', next);
+};
+
+const modeDraft = reactive({});
+const selectedGame = ref('');
+const selectedGameModes = computed(() => state.games.find((game) => game.id === selectedGame.value)?.modes || []);
 
 export const useArcadeStore = () => {
   const highscoresByGame = computed(() => state.games.map((game) => ({
@@ -73,13 +84,16 @@ export const useArcadeStore = () => {
   })));
 
   const addSubmission = async (payload) => {
+    requireFirebase();
     const score = Number(payload.score) || 0;
     const matcher = (sub) =>
       sub.gamertag === payload.gamertag &&
       sub.gameId === payload.gameId &&
       sub.locationId === payload.locationId;
     const existingIdx = findIndex(state.submissions, matcher);
-    if (existingIdx !== -1 && state.submissions[existingIdx].score >= score) return;
+    if (existingIdx !== -1 && state.submissions[existingIdx].score >= score) {
+      throw new Error('A higher score already exists for this player at this location.');
+    }
 
     if (existingIdx !== -1) state.submissions.splice(existingIdx, 1);
 
@@ -90,48 +104,69 @@ export const useArcadeStore = () => {
       score,
     };
     state.submissions.unshift(submission);
-    if (firebaseConfigured) await putRecord('submissions', submission);
+    await putRecord('submissions', submission);
   };
 
   const deleteSubmission = async (submissionId) => {
+    requireFirebase();
     const idx = findIndex(state.submissions, (sub) => sub.id === submissionId);
     if (idx !== -1) state.submissions.splice(idx, 1);
-    if (firebaseConfigured) await deleteRecord('submissions', submissionId);
+    await deleteRecord('submissions', submissionId);
   };
 
-  const addGame = async ({ id, code, name }) => {
+  const addGame = async ({ id, code, name, modes = [] }) => {
+    requireFirebase();
     if (!name) return;
     const nextId = id || code || name.toUpperCase().replace(/\s+/g, '-');
     if (state.games.some((game) => game.id === nextId)) return;
-    const record = { id: nextId, name };
+    const record = normalizeGame({ id: nextId, name, modes });
     state.games.push(record);
-    if (firebaseConfigured) await putRecord('games', record);
+    await putRecord('games', record);
   };
 
   const removeGame = async (id) => {
+    requireFirebase();
     const idx = findIndex(state.games, (game) => game.id === id);
     if (idx !== -1) state.games.splice(idx, 1);
     replaceArray(
       state.submissions,
       state.submissions.filter((sub) => sub.gameId !== id),
     );
-    if (firebaseConfigured) await deleteRecord('games', id);
+    await deleteRecord('games', id);
   };
 
   const addLocation = async ({ id, name }) => {
+    requireFirebase();
     if (!id || !name || state.locations.some((loc) => loc.id === id)) return;
     state.locations.push({ id, name });
-    if (firebaseConfigured) await putRecord('locations', { id, name });
+    await putRecord('locations', { id, name });
   };
 
   const removeLocation = async (id) => {
+    requireFirebase();
     const idx = findIndex(state.locations, (loc) => loc.id === id);
     if (idx !== -1) state.locations.splice(idx, 1);
     replaceArray(
       state.submissions,
       state.submissions.filter((sub) => sub.locationId !== id),
     );
-    if (firebaseConfigured) await deleteRecord('locations', id);
+    await deleteRecord('locations', id);
+  };
+
+  const addModeToGame = async (gameId, mode) => {
+    requireFirebase();
+    if (!mode) return;
+    await updateGameRecord(gameId, (game) => {
+      if (!game.modes.includes(mode)) game.modes.push(mode);
+    });
+  };
+
+  const removeModeFromGame = async (gameId, mode) => {
+    requireFirebase();
+    if (!mode) return;
+    await updateGameRecord(gameId, (game) => {
+      game.modes = game.modes.filter((item) => item !== mode);
+    });
   };
 
   return {
@@ -144,5 +179,9 @@ export const useArcadeStore = () => {
     removeGame,
     addLocation,
     removeLocation,
+    addModeToGame,
+    removeModeFromGame,
+    selectedGame,
+    selectedGameModes,
   };
 };
