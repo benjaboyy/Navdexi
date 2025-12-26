@@ -11,8 +11,8 @@ const router = createRouter({
     { path: '/scores', name: 'HighScores', component: HighScores },
     { path: '/submit', name: 'SubmitScore', component: SubmitScore },
     { path: '/admin', name: 'AdminPanel', component: AdminPanel },
+    { path: '/:pathMatch(.*)*', redirect: '/scores' },
   ],
 });
 
 export default router;
-
