@@ -4,10 +4,20 @@
     <p class="subtitle">Live leaderboard per game sourced from Firebase.</p>
 
     <div class="grid">
-      <div v-for="game in highscores" :key="game.id" class="game-card">
+      <div
+        v-for="game in highscores"
+        :key="game.id"
+        class="game-card"
+        :style="cardStyle(game)"
+      >
         <header class="game-header">
-          <h2>{{ game.name }}</h2>
-          <small>ID: {{ game.id }}</small>
+          <div>
+            <h2>{{ game.name }}</h2>
+            <small>ID: {{ game.id }}</small>
+          </div>
+          <RouterLink class="cta" :style="ctaStyle(game)" :to="{ name: 'GameLanding', params: { gameId: game.id } }">
+            View page
+          </RouterLink>
         </header>
 
         <ScoreTable
@@ -22,7 +32,17 @@
             :key="`${game.id}-${mode}`"
             :title="mode"
             :items="getModeScores(game.id, mode)"
-          />
+          >
+            <template #actions>
+              <RouterLink
+                class="mode-link"
+                :style="ctaStyle(game)"
+                :to="{ name: 'GameLandingMode', params: { gameId: game.id, modeId: mode } }"
+              >
+                Open landing
+              </RouterLink>
+            </template>
+          </ScoreTable>
         </section>
       </div>
     </div>
@@ -30,6 +50,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
 import ScoreTable from '../components/ScoreTable.vue';
 import { useArcadeStore } from '../stores/arcadeStore';
 
@@ -49,4 +71,18 @@ const getModeScores = (gameId, mode) =>
       .sort((a, b) => b.score - a.score)
       .slice(0, 10),
   );
+
+const cardStyle = (game) => ({
+  borderColor: game.theme?.accentColor || 'var(--border)',
+  backgroundImage: game.theme?.backgroundImage
+    ? `linear-gradient(180deg, rgba(2,6,23,0.8), rgba(2,6,23,0.95)), url(${game.theme.backgroundImage})`
+    : undefined,
+  backgroundSize: game.theme?.backgroundImage ? 'cover' : undefined,
+  backgroundPosition: 'center',
+});
+
+const ctaStyle = (game) => ({
+  borderColor: game.theme?.accentColor || 'var(--accent)',
+  color: game.theme?.accentColor || 'var(--accent)',
+});
 </script>

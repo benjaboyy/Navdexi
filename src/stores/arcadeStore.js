@@ -12,6 +12,18 @@ const state = reactive({
 const missingConfigMessage = 'Firebase URL missing. Set VITE_FIREBASE_URL in your .env file.';
 if (!firebaseConfigured) state.error = missingConfigMessage;
 
+const defaultTheme = Object.freeze({
+  backgroundImage: '',
+  accentColor: '#38bdf8',
+  textColor: '#f8fafc',
+});
+
+const normalizeTheme = (theme = {}) => ({
+  backgroundImage: theme.backgroundImage || '',
+  accentColor: theme.accentColor || defaultTheme.accentColor,
+  textColor: theme.textColor || defaultTheme.textColor,
+});
+
 const requireFirebase = () => {
   if (!firebaseConfigured) throw new Error(missingConfigMessage);
 };
@@ -19,6 +31,7 @@ const requireFirebase = () => {
 const normalizeGame = (game) => ({
   ...game,
   modes: Array.isArray(game.modes) ? [...game.modes] : [],
+  theme: normalizeTheme(game.theme),
 });
 
 const hydrateFromSource = (snapshot) => {
@@ -58,10 +71,11 @@ const findIndex = (list, matcher) => list.findIndex(matcher);
 const updateGameRecord = async (gameId, updater) => {
   const idx = findIndex(state.games, (game) => game.id === gameId);
   if (idx === -1) return;
-  const next = { ...state.games[idx] };
+  const next = normalizeGame({ ...state.games[idx] });
   updater(next);
-  state.games.splice(idx, 1, next);
-  await putRecord('games', next);
+  const normalized = normalizeGame(next);
+  state.games.splice(idx, 1, normalized);
+  await putRecord('games', normalized);
 };
 
 const modeDraft = reactive({});
@@ -114,12 +128,12 @@ export const useArcadeStore = () => {
     await deleteRecord('submissions', submissionId);
   };
 
-  const addGame = async ({ id, code, name, modes = [] }) => {
+  const addGame = async ({ id, code, name, modes = [], theme = {} }) => {
     requireFirebase();
     if (!name) return;
     const nextId = id || code || name.toUpperCase().replace(/\s+/g, '-');
     if (state.games.some((game) => game.id === nextId)) return;
-    const record = normalizeGame({ id: nextId, name, modes });
+    const record = normalizeGame({ id: nextId, name, modes, theme });
     state.games.push(record);
     await putRecord('games', record);
   };
@@ -169,6 +183,13 @@ export const useArcadeStore = () => {
     });
   };
 
+  const updateGameTheme = async (gameId, theme) => {
+    requireFirebase();
+    await updateGameRecord(gameId, (game) => {
+      game.theme = normalizeTheme({ ...game.theme, ...theme });
+    });
+  };
+
   return {
     state,
     highscoresByGame,
@@ -181,6 +202,7 @@ export const useArcadeStore = () => {
     removeLocation,
     addModeToGame,
     removeModeFromGame,
+    updateGameTheme,
     selectedGame,
     selectedGameModes,
   };

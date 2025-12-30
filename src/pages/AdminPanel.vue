@@ -84,6 +84,33 @@
               />
               <button type="submit">Add</button>
             </form>
+
+            <form class="theme-form" @submit.prevent="handleThemeSave(game.id)">
+              <label>
+                Background image URL
+                <input
+                  v-model="themeDraftFor(game).backgroundImage"
+                  placeholder="https://images.example/arcade.jpg"
+                />
+              </label>
+              <div class="theme-color-row">
+                <label>
+                  Accent color
+                  <input
+                    type="color"
+                    v-model="themeDraftFor(game).accentColor"
+                  />
+                </label>
+                <label>
+                  Text color
+                  <input
+                    type="color"
+                    v-model="themeDraftFor(game).textColor"
+                  />
+                </label>
+              </div>
+              <button type="submit">Save Theme</button>
+            </form>
           </li>
         </ul>
       </section>
@@ -133,13 +160,25 @@ const verify = () => {
   if (ok) password.value = '';
 };
 
-const { submissionsWithMeta, deleteSubmission, state, addGame, removeGame, addLocation, removeLocation, addModeToGame, removeModeFromGame } = useArcadeStore();
+const { submissionsWithMeta, deleteSubmission, state, addGame, removeGame, addLocation, removeLocation, addModeToGame, removeModeFromGame, updateGameTheme } = useArcadeStore();
 
 const submissions = computed(() => submissionsWithMeta.value.slice(0, 20));
 
 const newGame = reactive({ name: '', id: '', modes: '' });
 const newLocation = reactive({ id: '', name: '' });
 const modeDraft = reactive({});
+const themeDraft = reactive({});
+
+const themeDraftFor = (game) => {
+  if (!themeDraft[game.id]) {
+    themeDraft[game.id] = {
+      backgroundImage: game.theme?.backgroundImage || '',
+      accentColor: game.theme?.accentColor || '#38bdf8',
+      textColor: game.theme?.textColor || '#f8fafc',
+    };
+  }
+  return themeDraft[game.id];
+};
 
 const handleGameAdd = () => {
   const modes = newGame.modes
@@ -167,5 +206,11 @@ const handleModeAdd = (gameId) => {
 
 const handleModeRemove = (gameId, mode) => {
   removeModeFromGame(gameId, mode);
+};
+
+const handleThemeSave = (gameId) => {
+  const payload = themeDraft[gameId];
+  if (!payload) return;
+  updateGameTheme(gameId, { ...payload });
 };
 </script>

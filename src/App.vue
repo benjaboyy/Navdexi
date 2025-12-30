@@ -1,5 +1,5 @@
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ 'full-bleed': fullBleed }">
     <header class="topbar">
       <span>Navdexi <small><i>V0.1</i></small></span>
       <nav>
@@ -9,12 +9,16 @@
       </nav>
     </header>
 
-    <main>
+    <main :class="{ 'full-bleed': fullBleed }">
       <RouterView />
     </main>
   </div>
 </template>
 
 <script setup>
-import { RouterLink, RouterView } from 'vue-router';
+import { computed } from 'vue';
+import { RouterLink, RouterView, useRoute } from 'vue-router';
+
+const route = useRoute();
+const fullBleed = computed(() => ['GameLanding', 'GameLandingMode'].includes(route.name));
 </script>
