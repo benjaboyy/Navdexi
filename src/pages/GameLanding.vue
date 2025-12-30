@@ -43,11 +43,6 @@
                 <span v-if="activeMode">for {{ activeMode }}</span>
               </small>
             </div>
-            <div class="card-actions">
-              <RouterLink class="cta" :style="ctaStyle" :to="{ name: 'SubmitScore' }">
-                Submit score
-              </RouterLink>
-            </div>
           </header>
           <ScoreTable :items="scores" title="" showMode />
         </section>
