@@ -330,10 +330,6 @@ form.card {
 }
 
 @media (max-width: 650px) {
-  .topbar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
 
   main {
     padding: 1.5rem 1rem 2.5rem;
@@ -346,4 +342,41 @@ form.card {
 
 h2, h3 {
   margin-top: 0;
+}
+
+.animate-fly-fade, .page {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: flyFadeIn 0.65s ease forwards;
+}
+
+.animate-delay-1, .page {
+  animation-delay: 0.08s;
+}
+
+.animate-delay-2 {
+  animation-delay: 0.18s;
+}
+
+.animate-delay-3 {
+  animation-delay: 0.28s;
+}
+
+@keyframes flyFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fly-fade {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }

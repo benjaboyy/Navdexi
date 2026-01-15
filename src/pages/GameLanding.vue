@@ -8,49 +8,41 @@
           <h1>{{ game?.name || route.params.gameId }}</h1>
           <p class="mode-label" v-if="activeMode">Mode • <span>{{ activeMode }}</span></p>
           <p class="mode-label" v-else-if="game?.modes?.length">{{ game.modes.length }} mode(s) available</p>
-          <div class="hero-meta" v-if="game">
-            <span>ID: {{ game.id }}</span>
-            <span v-if="topScore">Top score: {{ topScore.score.toLocaleString() }}</span>
-            <span v-if="topScore">By {{ topScore.gamertag }}</span>
-          </div>
+
+          <nav v-if="game?.modes?.length" class="mode-nav">
+            <RouterLink
+                v-for="mode in game.modes"
+                :key="mode"
+                :class="['pill', { active: activeMode === mode }]"
+                :style="pillStyle"
+                :to="{ name: 'GameLandingMode', params: { gameId: game.id, modeId: mode } }"
+            >
+              {{ mode }}
+            </RouterLink>
+          </nav>
         </section>
 
-        <nav v-if="game?.modes?.length" class="mode-nav">
-          <RouterLink
-              :class="['pill', { active: !activeMode }]"
-              :style="pillStyle"
-              :to="{ name: 'GameLanding', params: { gameId: game.id } }"
-          >
-            Overall
-          </RouterLink>
-          <RouterLink
-              v-for="mode in game.modes"
-              :key="mode"
-              :class="['pill', { active: activeMode === mode }]"
-              :style="pillStyle"
-              :to="{ name: 'GameLandingMode', params: { gameId: game.id, modeId: mode } }"
-          >
-            {{ mode }}
-          </RouterLink>
-        </nav>
-
-        <section class="card landing-card" v-if="game">
+        <div v-if="game">
           <header class="landing-card-header">
             <div>
-              <h2>{{ activeMode ? `${game.name} – ${activeMode}` : `${game.name} leaderboard` }}</h2>
               <small>
                 Showing top {{ scores.length ? scores.length : 0 }} scores
                 <span v-if="activeMode">for {{ activeMode }}</span>
               </small>
             </div>
           </header>
-          <ScoreTable :items="scores" title="" showMode />
-        </section>
+          <ScoreTable :items="scores" title="" />
+        </div>
 
         <section v-else class="card landing-card">
           <h2>Game not found</h2>
           <p>Check the URL or return to the <RouterLink to="/scores">high scores</RouterLink>.</p>
         </section>
+        <div class="hero-meta" v-if="game">
+          <span>ID: {{ game.id }}</span>
+          <span v-if="topScore">Top score: {{ topScore.score.toLocaleString() }}</span>
+          <span v-if="topScore">By {{ topScore.gamertag }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -146,6 +138,10 @@ const pillStyle = computed(() => ({
   font-weight: 600;
 }
 
+h1 {
+  margin-bottom: 0;
+}
+
 .hero-meta {
   display: flex;
   flex-wrap: wrap;
@@ -167,7 +163,7 @@ const pillStyle = computed(() => ({
 
 .pill.active {
   background: var(--landing-accent, var(--accent));
-  color: #041525;
+  color: #041525 !important;
 }
 
 .landing-card {

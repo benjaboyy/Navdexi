@@ -3,7 +3,7 @@
     <h1>High Scores</h1>
     <p class="subtitle">Live leaderboard per game sourced from Firebase.</p>
 
-    <div class="grid">
+    <div class="grid animate-fly-fade animate-delay-2">
       <div
         v-for="game in highscores"
         :key="game.id"
@@ -22,6 +22,7 @@
 
         <ScoreTable
           v-if="!game.modes?.length"
+          class="animate-fly-fade animate-delay-3"
           :title="game.modes?.length ? 'Overall' : 'Top scores'"
           :items="decorate(game.scores)"
         />
@@ -29,6 +30,7 @@
         <section v-if="game.modes?.length" class="mode-stack">
           <ScoreTable
             v-for="mode in game.modes"
+            class="animate-fly-fade animate-delay-3"
             :key="`${game.id}-${mode}`"
             :title="mode"
             :items="getModeScores(game.id, mode)"

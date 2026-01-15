@@ -1,7 +1,7 @@
 <template>
   <div class="score-table">
     <header>
-      <h3>{{ title }}</h3>
+      <h3 v-if="title">{{ title }}</h3>
       <slot name="actions" />
     </header>
     <table>
